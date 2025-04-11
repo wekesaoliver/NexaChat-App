@@ -125,11 +125,11 @@ Here’s a preview of the NexaChat application:
 |-----------|------------|
 | ![Home Page](screenshots/home.png) | ![Login Page](screenshots/login.png) |
 
-| Chat Interface | Media Upload |
+| Chat Interface | Signup page |
 |----------------|---------------|
 | ![Chat](screenshots/chat.png) | ![Signup page](screenshots/signup.png) |
 
-| M-Pesa Payment | Payment Request |
+| M-Pesa Payment | Mobile Screen |
 |----------------|------------------|
 | ![M-PESA payment](screenshots/mpesa.png) | ![Mobile Device](screenshots/mobile.png) |
 
