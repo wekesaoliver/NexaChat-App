@@ -99,8 +99,63 @@ export const useAuthStore = create((set, get) => ({
         socket.on("getOnlineUsers", (userIds) => {
             set({ onlineUsers: userIds });
         });
+
+        // M-Pesa payment event listeners
+        socket.on("payment_initiated", (data) => {
+            toast.info(
+                `${data.senderName} is sending you a payment of KES ${data.amount}`
+            );
+        });
+
+        socket.on("payment_completed", (data) => {
+            toast.success(
+                `Payment of KES ${data.amount} received from ${data.senderName}`
+            );
+            // If you have a function to add messages to the chat
+            if (window.addPaymentMessage) {
+                window.addPaymentMessage({
+                    _id: Date.now().toString(),
+                    senderId: data.senderId,
+                    receiverId: authUser._id,
+                    text: `Payment of KES ${data.amount} received.`,
+                    isPaymentMessage: true,
+                    paymentDetails: {
+                        amount: data.amount,
+                        status: "completed",
+                        receipt: data.receipt,
+                    },
+                    createdAt: new Date().toISOString(),
+                });
+            }
+        });
+
+        socket.on("payment_failed", (data) => {
+            toast.error(`Payment failed: ${data.reason}`);
+        });
+
+        socket.on("payment_request_received", (data) => {
+            toast.info(
+                `${data.requesterName} has requested KES ${data.amount} for ${data.reason}`
+            );
+        });
+
+        socket.on("payment_request_updated", (data) => {
+            const statusMessage =
+                data.status === "paid"
+                    ? `Your payment request of KES ${data.amount} was paid`
+                    : `Your payment request of KES ${data.amount} was rejected`;
+
+            toast[data.status === "paid" ? "success" : "error"](statusMessage);
+        });
     },
     disconnectSocket: () => {
         if (get().socket?.connected) get().socket.disconnect();
+    },
+
+    emitPaymentEvent: (eventName, data) => {
+        const socket = get().socket;
+        if (socket?.connected) {
+            socket.emit(eventName, data);
+        }
     },
 }));

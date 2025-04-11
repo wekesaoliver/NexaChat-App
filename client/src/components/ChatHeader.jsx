@@ -1,8 +1,9 @@
-"use client";
-
+// src/components/ChatHeader.jsx
+import React from "react";
 import { X } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
+import PaymentButton from "./PaymentButton";
 
 const ChatHeader = () => {
     const { selectedUser, setSelectedUser } = useChatStore();
@@ -35,15 +36,21 @@ const ChatHeader = () => {
                     </div>
                 </div>
 
-                {/* Close button */}
-                <button
-                    onClick={() => setSelectedUser(null)}
-                    className="p-1.5 hover:bg-base-200 rounded-full"
-                >
-                    <X className="size-4 sm:size-5" />
-                </button>
+                {/* Actions */}
+                <div className="flex items-center gap-1">
+                    <PaymentButton />
+
+                    {/* Close button */}
+                    <button
+                        onClick={() => setSelectedUser(null)}
+                        className="p-1.5 hover:bg-base-200 rounded-full"
+                    >
+                        <X className="size-4 sm:size-5" />
+                    </button>
+                </div>
             </div>
         </div>
     );
 };
+
 export default ChatHeader;

@@ -27,6 +27,14 @@ io.on("connection", (socket) => {
     //io.emit() is used to send events to all the connected users
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
+    // Handle payment events
+    socket.on("payment_initiated", (data) => {
+        const { recipientId } = data;
+        if (recipientId) {
+            socket.to(recipientId).emit("payment_initiated", data);
+        }
+    });
+
     socket.on("disconnect", () => {
         console.log("A user disconnected", socket.id);
         delete userSocketMap[userId];

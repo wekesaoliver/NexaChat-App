@@ -1,12 +1,12 @@
-"use client";
-
-import { useEffect, useRef } from "react";
+// src/components/ChatContainer.jsx
+import React, { useEffect, useRef } from "react";
 import { useChatStore } from "../store/useChatStore";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utilis";
+import PaymentMessage from "./PaymentMessage";
 
 const ChatContainer = () => {
     const {
@@ -20,13 +20,21 @@ const ChatContainer = () => {
 
     const { authUser } = useAuthStore();
     const messageEndRef = useRef(null);
+    const { addMessage } = useChatStore();
 
     useEffect(() => {
+        // Expose the function to add payment messages
+        window.addPaymentMessage = addMessage;
+
         getMessages(selectedUser._id);
         subscribeToMessages();
 
-        return () => unsubscribeFromMessages();
+        return () => {
+            window.addPaymentMessage = null;
+            unsubscribeFromMessages();
+        };
     }, [
+        addMessage,
         selectedUser._id,
         getMessages,
         subscribeToMessages,
@@ -53,50 +61,103 @@ const ChatContainer = () => {
             <ChatHeader />
 
             <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-2 sm:space-y-4">
-                {messages.map((message) => (
-                    <div
-                        key={message._id}
-                        className={`chat ${
-                            message.senderId === authUser._id
-                                ? "chat-end"
-                                : "chat-start"
-                        }`}
-                        ref={messageEndRef}
-                    >
-                        <div className="chat-image avatar">
-                            <div className="size-8 sm:size-10 rounded-full border">
-                                <img
-                                    src={
-                                        message.senderId === authUser._id
-                                            ? authUser.profilePic ||
-                                              "/avatar.png"
-                                            : selectedUser.profilePic ||
-                                              "/avatar.png"
-                                    }
-                                    alt="profile pic"
-                                />
+                {messages.map((message) => {
+                    // If it's a payment message
+                    if (message.isPaymentMessage) {
+                        return (
+                            <div
+                                key={message._id}
+                                className={`chat ${
+                                    message.senderId === authUser._id
+                                        ? "chat-end"
+                                        : "chat-start"
+                                }`}
+                            >
+                                <div className="chat-image avatar">
+                                    <div className="size-8 sm:size-10 rounded-full border">
+                                        <img
+                                            src={
+                                                message.senderId ===
+                                                authUser._id
+                                                    ? authUser.profilePic ||
+                                                      "/avatar.png"
+                                                    : selectedUser.profilePic ||
+                                                      "/avatar.png"
+                                            }
+                                            alt="profile pic"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="chat-header mb-0.5 sm:mb-1">
+                                    <time className="text-xs opacity-50 ml-1">
+                                        {formatMessageTime(message.createdAt)}
+                                    </time>
+                                </div>
+                                <div className="chat-bubble">
+                                    <PaymentMessage
+                                        amount={message.paymentDetails.amount}
+                                        status={message.paymentDetails.status}
+                                        receipt={message.paymentDetails.receipt}
+                                        timestamp={formatMessageTime(
+                                            message.createdAt
+                                        )}
+                                    />
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    // Regular text/image message
+                    return (
+                        <div
+                            key={message._id}
+                            className={`chat ${
+                                message.senderId === authUser._id
+                                    ? "chat-end"
+                                    : "chat-start"
+                            }`}
+                            ref={messageEndRef}
+                        >
+                            <div className="chat-image avatar">
+                                <div className="size-8 sm:size-10 rounded-full border">
+                                    <img
+                                        src={
+                                            message.senderId === authUser._id
+                                                ? authUser.profilePic ||
+                                                  "/avatar.png"
+                                                : selectedUser.profilePic ||
+                                                  "/avatar.png"
+                                        }
+                                        alt="profile pic"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="chat-header mb-0.5 sm:mb-1">
+                                <time className="text-xs opacity-50 ml-1">
+                                    {formatMessageTime(message.createdAt)}
+                                </time>
+                            </div>
+                            <div className="chat-bubble flex flex-col max-w-[75vw] sm:max-w-[60vw] md:max-w-[50vw] lg:max-w-[40vw]">
+                                {message.image && (
+                                    <img
+                                        src={
+                                            message.image || "/placeholder.svg"
+                                        }
+                                        alt="Attachment"
+                                        className="max-w-full xs:max-w-[150px] sm:max-w-[200px] md:max-w-[250px] rounded-md mb-2"
+                                    />
+                                )}
+                                {message.text && (
+                                    <p className="break-words">
+                                        {message.text}
+                                    </p>
+                                )}
                             </div>
                         </div>
-
-                        <div className="chat-header mb-0.5 sm:mb-1">
-                            <time className="text-xs opacity-50 ml-1">
-                                {formatMessageTime(message.createdAt)}
-                            </time>
-                        </div>
-                        <div className="chat-bubble flex flex-col max-w-[75vw] sm:max-w-[60vw] md:max-w-[50vw] lg:max-w-[40vw]">
-                            {message.image && (
-                                <img
-                                    src={message.image || "/placeholder.svg"}
-                                    alt="Attachment"
-                                    className="max-w-full xs:max-w-[150px] sm:max-w-[200px] md:max-w-[250px] rounded-md mb-2"
-                                />
-                            )}
-                            {message.text && (
-                                <p className="break-words">{message.text}</p>
-                            )}
-                        </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             <MessageInput />
