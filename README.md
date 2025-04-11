@@ -115,6 +115,30 @@ client/
 ├── vite.config.js      # Vite configuration
 └── package.json        # Project metadata and dependencies
 ```
+
+---
+
+## 📸 Screenshots
+
+Here’s a preview of the NexaChat application:
+
+| Home Page | Login Page |
+|-----------|------------|
+| ![Home Page](screenshots/home.png) | ![Login Page](screenshots/login.png) |
+
+| Chat Interface | Media Upload |
+|----------------|---------------|
+| ![Chat](screenshots/chat.png) | ![Upload](screenshots/signup.png) |
+
+| M-Pesa Payment | Payment Request |
+|----------------|------------------|
+| ![Payment](screenshots/mpesa.png) | ![Request](screenshots/mobile.png) |
+
+| User Profile | Settings Page |
+|--------------|----------------|
+| ![Profile](screenshots/profile.png) | ![Settings](screenshots/settings.png) |
+
+
 # 📮 API Endpoints
 Route	Description
 /api/auth	Auth (register/login)
