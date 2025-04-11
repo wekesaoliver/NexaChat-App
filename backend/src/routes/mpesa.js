@@ -5,9 +5,109 @@ import { initiateSTKPush, checkTransactionStatus } from "../utils/mpesa.js";
 import Transaction from "../models/Transaction.js";
 import Message from "../models/message.model.js";
 import PaymentRequest from "../models/PaymentRequest.js";
+import { io, getReceiverSocketId } from "../lib/socket.js";
 
-// Initiate STK Push
-// routes/mpesa.js
+router.post("/callback", async (req, res) => {
+    try {
+        console.log("M-Pesa callback received:", req.body);
+        const { Body } = req.body;
+
+        if (Body.stkCallback) {
+            const {
+                ResultCode,
+                ResultDesc,
+                CheckoutRequestID,
+                CallbackMetadata,
+            } = Body.stkCallback;
+
+            // Find the transaction in the database
+            const transaction = await Transaction.findOne({
+                checkoutRequestID: CheckoutRequestID,
+            })
+                .populate("senderId", "fullName")
+                .populate("recipientId", "fullName");
+
+            if (!transaction) {
+                console.error("Transaction not found:", CheckoutRequestID);
+                return res
+                    .status(404)
+                    .json({ success: false, message: "Transaction not found" });
+            }
+
+            if (ResultCode === 0) {
+                // Payment successful
+                const paymentDetails =
+                    CallbackMetadata?.Item?.reduce((acc, item) => {
+                        acc[item.Name] = item.Value;
+                        return acc;
+                    }, {}) || {};
+
+                // Update transaction in database
+                transaction.status = "completed";
+                transaction.mpesaReceiptNumber =
+                    paymentDetails.MpesaReceiptNumber || null;
+                transaction.transactionDate =
+                    paymentDetails.TransactionDate || new Date();
+                transaction.resultCode = ResultCode.toString();
+                transaction.resultDescription = ResultDesc;
+                await transaction.save();
+
+                // Emit socket event for successful payment
+                const recipientSocketId = getReceiverSocketId(
+                    transaction.recipientId.toString()
+                );
+                if (recipientSocketId) {
+                    io.to(recipientSocketId).emit("payment_completed", {
+                        transactionId: transaction._id,
+                        senderId: transaction.senderId._id,
+                        senderName: transaction.senderId.fullName,
+                        amount: transaction.amount,
+                        description: transaction.description,
+                        receipt: paymentDetails.MpesaReceiptNumber,
+                    });
+                }
+
+                // Create a message in the chat about the successful payment
+                await Message.create({
+                    senderId: transaction.senderId._id,
+                    receiverId: transaction.recipientId._id,
+                    text: `Payment of KES ${transaction.amount} sent successfully.`,
+                    isPaymentMessage: true,
+                    paymentDetails: {
+                        amount: transaction.amount,
+                        status: "completed",
+                        receipt: paymentDetails.MpesaReceiptNumber,
+                    },
+                });
+            } else {
+                // Payment failed
+                transaction.status = "failed";
+                transaction.resultCode = ResultCode.toString();
+                transaction.resultDescription = ResultDesc;
+                await transaction.save();
+
+                // Emit socket event for failed payment
+                const senderSocketId = getReceiverSocketId(
+                    transaction.senderId.toString()
+                );
+                if (senderSocketId) {
+                    io.to(senderSocketId).emit("payment_failed", {
+                        transactionId: transaction._id,
+                        reason: ResultDesc,
+                    });
+                }
+            }
+        }
+
+        return res.json({ success: true });
+    } catch (error) {
+        console.error("Error processing callback:", error);
+        return res
+            .status(500)
+            .json({ success: false, message: "Failed to process callback" });
+    }
+});
+
 router.get("/test", (req, res) => {
     res.json({
         success: true,
@@ -22,6 +122,7 @@ router.get("/test", (req, res) => {
     });
 });
 
+// initiate route
 router.post("/initiate", async (req, res, next) => {
     try {
         console.log("Received payment initiation request:", req.body);
@@ -86,7 +187,7 @@ router.post("/initiate", async (req, res, next) => {
 
         // Store transaction in database
         try {
-            await Transaction.create({
+            const transaction = await Transaction.create({
                 checkoutRequestID: response.CheckoutRequestID,
                 merchantRequestID: response.MerchantRequestID,
                 amount,
@@ -96,6 +197,17 @@ router.post("/initiate", async (req, res, next) => {
                 description,
                 status: "pending",
             });
+
+            // Notify recipient via socket
+            const recipientSocketId = getReceiverSocketId(recipientId);
+            if (recipientSocketId) {
+                io.to(recipientSocketId).emit("payment_initiated", {
+                    transactionId: transaction._id,
+                    senderId,
+                    amount,
+                    description,
+                });
+            }
         } catch (dbError) {
             console.error("Database error (continuing anyway):", dbError);
             // We'll continue even if the database save fails
@@ -125,102 +237,70 @@ router.post("/initiate", async (req, res, next) => {
     }
 });
 
-// M-Pesa Callback
-router.post("/callback", async (req, res) => {
+router.get("/diagnose", async (req, res) => {
     try {
-        const { Body } = req.body;
-
-        if (Body.stkCallback) {
-            const {
-                ResultCode,
-                ResultDesc,
-                CheckoutRequestID,
-                CallbackMetadata,
-            } = Body.stkCallback;
-
-            // Find the transaction in the database
-            const transaction = await Transaction.findOne({
-                checkoutRequestID: CheckoutRequestID,
-            })
-                .populate("senderId", "fullName")
-                .populate("recipientId", "fullName");
-
-            if (!transaction) {
-                console.error("Transaction not found:", CheckoutRequestID);
-                return res
-                    .status(404)
-                    .json({ success: false, message: "Transaction not found" });
-            }
-
-            if (ResultCode === 0) {
-                // Payment successful
-                const paymentDetails =
-                    CallbackMetadata?.Item?.reduce((acc, item) => {
-                        acc[item.Name] = item.Value;
-                        return acc;
-                    }, {}) || {};
-
-                // Update transaction in database
-                transaction.status = "completed";
-                transaction.mpesaReceiptNumber =
-                    paymentDetails.MpesaReceiptNumber || null;
-                transaction.transactionDate =
-                    paymentDetails.TransactionDate || new Date();
-                transaction.resultCode = ResultCode.toString();
-                transaction.resultDescription = ResultDesc;
-                await transaction.save();
-
-                // Emit socket event for successful payment
-                io.to(transaction.recipientId.toString()).emit(
-                    "payment_completed",
-                    {
-                        transactionId: transaction._id,
-                        senderId: transaction.senderId._id,
-                        senderName: transaction.senderId.fullName,
-                        amount: transaction.amount,
-                        description: transaction.description,
-                        receipt: paymentDetails.MpesaReceiptNumber,
-                    }
-                );
-
-                // Create a message in the chat about the successful payment
-                await Message.create({
-                    senderId: transaction.senderId._id,
-                    receiverId: transaction.recipientId._id,
-                    text: `Payment of KES ${transaction.amount} sent successfully.`,
-                    isPaymentMessage: true,
-                    paymentDetails: {
-                        amount: transaction.amount,
-                        status: "completed",
-                        receipt: paymentDetails.MpesaReceiptNumber,
-                    },
-                });
-            } else {
-                // Payment failed
-                transaction.status = "failed";
-                transaction.resultCode = ResultCode.toString();
-                transaction.resultDescription = ResultDesc;
-                await transaction.save();
-
-                // Emit socket event for failed payment
-                io.to(transaction.senderId.toString()).emit("payment_failed", {
-                    transactionId: transaction._id,
-                    reason: ResultDesc,
-                });
-            }
+        // Test database connection
+        let dbStatus = "Not tested";
+        try {
+            const isConnected = mongoose.connection.readyState === 1;
+            dbStatus = isConnected ? "Connected" : "Disconnected";
+        } catch (dbError) {
+            dbStatus = `Error: ${dbError.message}`;
         }
 
-        return res.json({ success: true });
+        // Test M-Pesa authentication
+        let mpesaAuthStatus = "Not tested";
+        let token = null;
+        try {
+            token = await getAccessToken();
+            mpesaAuthStatus = token ? "Success" : "Failed (no token)";
+        } catch (authError) {
+            mpesaAuthStatus = `Error: ${authError.message}`;
+        }
+
+        // Check environment variables
+        const envCheck = {
+            MPESA_CONSUMER_KEY: process.env.MPESA_CONSUMER_KEY
+                ? "Set"
+                : "Missing",
+            MPESA_CONSUMER_SECRET: process.env.MPESA_CONSUMER_SECRET
+                ? "Set"
+                : "Missing",
+            MPESA_PASSKEY: process.env.MPESA_PASSKEY ? "Set" : "Missing",
+            MPESA_SHORTCODE: process.env.MPESA_SHORTCODE ? "Set" : "Missing",
+            APP_URL: process.env.APP_URL || "Not set",
+            NODE_ENV: process.env.NODE_ENV || "Not set",
+            BASE_URL: process.env.BASE_URL || "Not set",
+        };
+
+        res.json({
+            success: true,
+            timestamp: new Date().toISOString(),
+            environment: process.env.NODE_ENV,
+            database: {
+                status: dbStatus,
+                uri: process.env.MONGO_URI ? "Set (hidden)" : "Missing",
+            },
+            mpesa: {
+                authStatus: mpesaAuthStatus,
+                hasToken: !!token,
+                baseUrl: BASE_URL,
+                callbackUrl: `${
+                    process.env.APP_URL || "http://localhost:5001"
+                }/api/mpesa/callback`,
+            },
+            envCheck,
+        });
     } catch (error) {
-        console.error("Error processing callback:", error);
-        return res
-            .status(500)
-            .json({ success: false, message: "Failed to process callback" });
+        res.status(500).json({
+            success: false,
+            error: error.message,
+            stack: process.env.NODE_ENV === "production" ? null : error.stack,
+        });
     }
 });
 
 // Check transaction status
-// routes/mpesa.js
 router.post("/status", async (req, res, next) => {
     try {
         console.log("Received payment status check request:", req.body);

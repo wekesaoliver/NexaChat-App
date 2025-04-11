@@ -7,7 +7,15 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: ["http://localhost:5173"],
+        origin:
+            process.env.NODE_ENV === "production"
+                ? [
+                      "https://nexachat-app.onrender.com",
+                      "https://nexachat-client.onrender.com",
+                  ]
+                : ["http://localhost:5173"],
+        methods: ["GET", "POST"],
+        credentials: true,
     },
 });
 
@@ -31,7 +39,23 @@ io.on("connection", (socket) => {
     socket.on("payment_initiated", (data) => {
         const { recipientId } = data;
         if (recipientId) {
-            socket.to(recipientId).emit("payment_initiated", data);
+            const recipientSocketId = getReceiverSocketId(recipientId);
+            if (recipientSocketId) {
+                socket.to(recipientSocketId).emit("payment_initiated", data);
+            }
+        }
+    });
+
+    // Add more payment-related socket events
+    socket.on("payment_request_sent", (data) => {
+        const { recipientId } = data;
+        if (recipientId) {
+            const recipientSocketId = getReceiverSocketId(recipientId);
+            if (recipientSocketId) {
+                socket
+                    .to(recipientSocketId)
+                    .emit("payment_request_received", data);
+            }
         }
     });
 

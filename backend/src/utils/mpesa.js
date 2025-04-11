@@ -61,12 +61,15 @@ export function generatePassword(timestamp) {
 /**
  * Initiate STK Push request
  */
+
+// initiateSTKPush function
 export async function initiateSTKPush(phoneNumber, amount, description) {
     try {
         console.log("Initiating STK Push with:", {
             phoneNumber,
             amount,
             description,
+            env: process.env.NODE_ENV,
         });
 
         // Format phone number (remove leading 0 or +254)
@@ -92,6 +95,22 @@ export async function initiateSTKPush(phoneNumber, amount, description) {
             throw new Error("Amount must be a valid number");
         }
 
+        // Get the correct callback URL based on environment
+        let callbackUrl;
+        if (process.env.NODE_ENV === "production") {
+            // Use the deployed URL in production
+            callbackUrl = `${
+                process.env.APP_URL || "https://nexachat-app.onrender.com"
+            }/api/mpesa/callback`;
+        } else {
+            // Use the APP_URL from env or default to localhost in development
+            callbackUrl = `${
+                process.env.APP_URL || "http://localhost:5001"
+            }/api/mpesa/callback`;
+        }
+
+        console.log("Using callback URL:", callbackUrl);
+
         // Prepare the request payload
         const payload = {
             BusinessShortCode: process.env.MPESA_SHORTCODE,
@@ -102,14 +121,12 @@ export async function initiateSTKPush(phoneNumber, amount, description) {
             PartyA: formattedPhone,
             PartyB: process.env.MPESA_SHORTCODE,
             PhoneNumber: formattedPhone,
-            CallBackURL: `${
-                process.env.APP_URL || "http://localhost:5001"
-            }/api/mpesa/callback`,
+            CallBackURL: callbackUrl,
             AccountReference: "NexaChat",
             TransactionDesc: description,
         };
 
-        console.log("STK Push request payload:", payload);
+        console.log("STK Push request payload:", JSON.stringify(payload));
 
         // Make the API request
         const response = await axios.post(
@@ -120,10 +137,11 @@ export async function initiateSTKPush(phoneNumber, amount, description) {
                     Authorization: `Bearer ${token}`,
                     "Content-Type": "application/json",
                 },
+                timeout: 30000, // 30 second timeout
             }
         );
 
-        console.log("STK Push successful");
+        console.log("STK Push successful:", response.data);
         return response.data;
     } catch (error) {
         console.error("Error in initiateSTKPush:", error.message);
