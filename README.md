@@ -75,7 +75,6 @@ npm run dev
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
 cd client
 
 # Install dependencies
@@ -128,11 +127,11 @@ Here’s a preview of the NexaChat application:
 
 | Chat Interface | Media Upload |
 |----------------|---------------|
-| ![Chat](screenshots/chat.png) | ![Upload](screenshots/signup.png) |
+| ![Chat](screenshots/chat.png) | ![Signup page](screenshots/signup.png) |
 
 | M-Pesa Payment | Payment Request |
 |----------------|------------------|
-| ![Payment](screenshots/mpesa.png) | ![Request](screenshots/mobile.png) |
+| ![M-PESA payment](screenshots/mpesa.png) | ![Mobile Device](screenshots/mobile.png) |
 
 | User Profile | Settings Page |
 |--------------|----------------|
