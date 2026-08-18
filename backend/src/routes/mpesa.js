@@ -53,32 +53,34 @@ router.post("/callback", async (req, res) => {
                 await transaction.save();
 
                 // Emit socket event for successful payment
-                const recipientSocketId = getReceiverSocketId(
-                    transaction.recipientId.toString()
-                );
-                if (recipientSocketId) {
-                    io.to(recipientSocketId).emit("payment_completed", {
-                        transactionId: transaction._id,
+                if (transaction.recipientId && transaction.senderId) {
+                    const recipientSocketId = getReceiverSocketId(
+                        transaction.recipientId.toString()
+                    );
+                    if (recipientSocketId) {
+                        io.to(recipientSocketId).emit("payment_completed", {
+                            transactionId: transaction._id,
+                            senderId: transaction.senderId._id,
+                            senderName: transaction.senderId.fullName,
+                            amount: transaction.amount,
+                            description: transaction.description,
+                            receipt: paymentDetails.MpesaReceiptNumber,
+                        });
+                    }
+
+                    // Create a message in the chat about the successful payment
+                    await Message.create({
                         senderId: transaction.senderId._id,
-                        senderName: transaction.senderId.fullName,
-                        amount: transaction.amount,
-                        description: transaction.description,
-                        receipt: paymentDetails.MpesaReceiptNumber,
+                        receiverId: transaction.recipientId._id,
+                        text: `Payment of KES ${transaction.amount} sent successfully.`,
+                        isPaymentMessage: true,
+                        paymentDetails: {
+                            amount: transaction.amount,
+                            status: "completed",
+                            receipt: paymentDetails.MpesaReceiptNumber,
+                        },
                     });
                 }
-
-                // Create a message in the chat about the successful payment
-                await Message.create({
-                    senderId: transaction.senderId._id,
-                    receiverId: transaction.recipientId._id,
-                    text: `Payment of KES ${transaction.amount} sent successfully.`,
-                    isPaymentMessage: true,
-                    paymentDetails: {
-                        amount: transaction.amount,
-                        status: "completed",
-                        receipt: paymentDetails.MpesaReceiptNumber,
-                    },
-                });
             } else {
                 // Payment failed
                 transaction.status = "failed";
@@ -87,14 +89,16 @@ router.post("/callback", async (req, res) => {
                 await transaction.save();
 
                 // Emit socket event for failed payment
-                const senderSocketId = getReceiverSocketId(
-                    transaction.senderId.toString()
-                );
-                if (senderSocketId) {
-                    io.to(senderSocketId).emit("payment_failed", {
-                        transactionId: transaction._id,
-                        reason: ResultDesc,
-                    });
+                if (transaction.senderId) {
+                    const senderSocketId = getReceiverSocketId(
+                        transaction.senderId.toString()
+                    );
+                    if (senderSocketId) {
+                        io.to(senderSocketId).emit("payment_failed", {
+                            transactionId: transaction._id,
+                            reason: ResultDesc,
+                        });
+                    }
                 }
             }
         }

@@ -103,6 +103,60 @@ export function generatePassword(timestamp) {
     return Buffer.from(`${shortcode}${passkey}${timestamp}`).toString("base64");
 }
 
+const VALID_TRANSACTION_TYPES = [
+    "CustomerPayBillOnline",
+    "CustomerBuyGoodsOnline",
+];
+
+/**
+ * Build the STK Push request payload.
+ *
+ * PayBill (CustomerPayBillOnline): BusinessShortCode = PartyB = shortcode
+ * Till  (CustomerBuyGoodsOnline): BusinessShortCode = shortcode, PartyB = till number
+ */
+export function buildSTKPushRequest({
+    shortcode,
+    passkey,
+    timestamp,
+    phoneNumber,
+    amount,
+    description,
+    callbackUrl,
+    transactionType = "CustomerPayBillOnline",
+    tillNumber,
+}) {
+    if (!VALID_TRANSACTION_TYPES.includes(transactionType)) {
+        throw new Error(
+            `Invalid MPESA_TRANSACTION_TYPE: ${transactionType}. Must be one of: ${VALID_TRANSACTION_TYPES.join(", ")}`
+        );
+    }
+
+    const isTillTransaction = transactionType === "CustomerBuyGoodsOnline";
+    if (isTillTransaction && !tillNumber) {
+        throw new Error(
+            "MPESA_TILL_NUMBER is required for Till (CustomerBuyGoodsOnline) transactions"
+        );
+    }
+
+    const password = Buffer.from(
+        `${shortcode}${passkey}${timestamp}`
+    ).toString("base64");
+
+    return {
+        BusinessShortCode: shortcode,
+        Password: password,
+        Timestamp: timestamp,
+        TransactionType: transactionType,
+        Amount: Math.round(amount), // M-Pesa requires whole numbers
+        PartyA: phoneNumber,
+        PartyB: isTillTransaction ? tillNumber : shortcode,
+        PhoneNumber: phoneNumber,
+        CallBackURL: callbackUrl,
+        AccountReference: "NexaChat",
+        TransactionDesc: description,
+    };
+}
+
 /**
  * Initiate STK Push request
  */
@@ -138,7 +192,6 @@ export async function initiateSTKPush(phoneNumber, amount, description) {
         console.log("M-Pesa - Got access token");
 
         const timestamp = generateTimestamp();
-        const password = generatePassword(timestamp);
 
         // Get the callback URL
         const appUrl =
@@ -154,20 +207,20 @@ export async function initiateSTKPush(phoneNumber, amount, description) {
             throw new Error("Amount must be a valid number");
         }
 
-        // Prepare request data
-        const requestData = {
-            BusinessShortCode: process.env.MPESA_SHORTCODE.trim(),
-            Password: password,
-            Timestamp: timestamp,
-            TransactionType: "CustomerPayBillOnline",
-            Amount: Math.round(numericAmount), // M-Pesa requires whole numbers
-            PartyA: formattedPhone,
-            PartyB: process.env.MPESA_SHORTCODE.trim(),
-            PhoneNumber: formattedPhone,
-            CallBackURL: callbackUrl,
-            AccountReference: "NexaChat",
-            TransactionDesc: description,
-        };
+        // Prepare request data (PayBill or Till based on MPESA_TRANSACTION_TYPE)
+        const requestData = buildSTKPushRequest({
+            shortcode: process.env.MPESA_SHORTCODE.trim(),
+            passkey: process.env.MPESA_PASSKEY.trim(),
+            timestamp,
+            phoneNumber: formattedPhone,
+            amount: numericAmount,
+            description,
+            callbackUrl,
+            transactionType:
+                process.env.MPESA_TRANSACTION_TYPE?.trim() ||
+                "CustomerPayBillOnline",
+            tillNumber: process.env.MPESA_TILL_NUMBER?.trim(),
+        });
 
         console.log("M-Pesa - Request data:", JSON.stringify(requestData));
 
