@@ -1,10 +1,27 @@
 "use client";
 import { Link } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore";
-import { LogOut, MessageSquare, Settings, User } from "lucide-react";
+import { axiosInstance } from "../lib/axios";
+import {
+    LogOut,
+    MessageSquare,
+    Settings,
+    User,
+    Store,
+    LayoutGrid,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
 const Navbar = () => {
     const { logout, authUser } = useAuthStore();
+    const [storeUrl, setStoreUrl] = useState("");
+
+    useEffect(() => {
+        axiosInstance
+            .get("/config")
+            .then((res) => setStoreUrl(res.data.storeUrl))
+            .catch(() => {});
+    }, []);
 
     return (
         <header
@@ -25,8 +42,35 @@ const Navbar = () => {
                                 NexaChat
                             </h1>
                         </Link>
+                        <Link
+                            to="/"
+                            className="btn btn-sm btn-ghost gap-1"
+                        >
+                            <LayoutGrid className="size-4" />
+                            <span className="hidden sm:inline">Posts</span>
+                        </Link>
+                        <Link
+                            to="/chat"
+                            className="btn btn-sm btn-ghost gap-1"
+                        >
+                            <MessageSquare className="size-4" />
+                            <span className="hidden sm:inline">Chat</span>
+                        </Link>
                     </div>
                     <div className="flex items-center gap-1 sm:gap-2">
+                        {storeUrl && (
+                            <a
+                                href={storeUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-sm btn-primary gap-1"
+                            >
+                                <Store className="size-4" />
+                                <span className="hidden sm:inline">
+                                    Visit Store
+                                </span>
+                            </a>
+                        )}
                         <Link
                             to={"/settings"}
                             className={`

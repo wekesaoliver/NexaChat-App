@@ -1,19 +1,27 @@
 "use client";
 
 // src/components/MessageInput.jsx
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Send, CreditCard, ImageIcon, X } from "lucide-react";
 import { useChatStore } from "../store/useChatStore";
 import PaymentModal from "./PaymentModal";
 import toast from "react-hot-toast";
 
 const MessageInput = () => {
-    const [text, setText] = useState("");
+    const { selectedUser, sendMessage, replyDraft, clearReplyDraft } =
+        useChatStore();
+
+    const [text, setText] = useState(replyDraft || "");
     const [imagePreview, setImagePreview] = useState(null);
     const fileInputRef = useRef(null);
     const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
-    const { selectedUser, sendMessage } = useChatStore();
+    useEffect(() => {
+        if (replyDraft) {
+            setText(replyDraft);
+            clearReplyDraft();
+        }
+    }, [replyDraft, clearReplyDraft]);
 
     const handleImageChange = (e) => {
         const file = e.target.files[0];

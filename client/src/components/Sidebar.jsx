@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
-import { Users, Eye } from "lucide-react";
+import { Users, Eye, Lock } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 
 const Sidebar = () => {
     const { getUsers, users, selectedUser, setSelectedUser, isUsersLoading } =
         useChatStore();
 
-    const { onlineUsers } = useAuthStore();
+    const { onlineUsers, authUser } = useAuthStore();
     const [showOnlineOnly, setShowOnlineOnly] = useState(false);
 
     useEffect(() => {
@@ -55,11 +55,15 @@ const Sidebar = () => {
             </div>
 
             <div className="overflow-y-auto w-full py-2 sm:py-3 flex-1">
-                {filteredUsers.map((user) => (
-                    <button
-                        key={user._id}
-                        onClick={() => setSelectedUser(user)}
-                        className={`
+                {filteredUsers.map((user) => {
+                    const isAdmin = authUser?.role === "admin";
+                    const canChat = isAdmin || user.role === "admin";
+                    return (
+                        <button
+                            key={user._id}
+                            onClick={() => canChat && setSelectedUser(user)}
+                            disabled={!canChat}
+                            className={`
                         w-full p-2 sm:p-3 flex flex-col lg:flex-row items-center gap-1 lg:gap-3
                         hover:bg-base-300 transition-colors
                         ${
@@ -67,40 +71,50 @@ const Sidebar = () => {
                                 ? "bg-base-300 ring-1 ring-base-300"
                                 : ""
                         }
+                        ${!canChat ? "opacity-60 cursor-not-allowed" : ""}
                         `}
-                    >
-                        <div className="relative mx-auto lg:mx-0">
-                            <img
-                                src={user.profilePic || "/avatar.png"}
-                                alt={user.name}
-                                className="size-10 sm:size-12 object-cover rounded-full"
-                            />
-                            {onlineUsers.includes(user._id) && (
-                                <span
-                                    className="absolute bottom-0 right-0 size-2 sm:size-3 bg-green-500
-                                    rounded-full ring-2 ring-zinc-900"
+                        >
+                            <div className="relative mx-auto lg:mx-0">
+                                <img
+                                    src={user.profilePic || "/avatar.png"}
+                                    alt={user.name}
+                                    className="size-10 sm:size-12 object-cover rounded-full"
                                 />
-                            )}
-                        </div>
-
-                        {/* User info - only visible on larger screens */}
-                        <div className="hidden lg:block text-left min-w-0 flex-1">
-                            <div className="font-medium truncate">
-                                {user.fullName}
+                                {onlineUsers.includes(user._id) && (
+                                    <span
+                                        className="absolute bottom-0 right-0 size-2 sm:size-3 bg-green-500
+                                    rounded-full ring-2 ring-zinc-900"
+                                    />
+                                )}
                             </div>
-                            <div className="text-sm text-zinc-400">
-                                {onlineUsers.includes(user._id)
-                                    ? "Online"
-                                    : "Offline"}
-                            </div>
-                        </div>
 
-                        {/* Small screen name indicator */}
-                        <div className="text-xs truncate max-w-full lg:hidden">
-                            {user.fullName.split(" ")[0]}
-                        </div>
-                    </button>
-                ))}
+                            {/* User info - only visible on larger screens */}
+                            <div className="hidden lg:block text-left min-w-0 flex-1">
+                                <div className="font-medium truncate flex items-center gap-1">
+                                    {user.fullName}
+                                    {user.role === "admin" && (
+                                        <span className="badge badge-primary badge-xs">
+                                            Admin
+                                        </span>
+                                    )}
+                                    {!canChat && (
+                                        <Lock className="size-3 text-zinc-500" />
+                                    )}
+                                </div>
+                                <div className="text-sm text-zinc-400">
+                                    {onlineUsers.includes(user._id)
+                                        ? "Online"
+                                        : "Offline"}
+                                </div>
+                            </div>
+
+                            {/* Small screen name indicator */}
+                            <div className="text-xs truncate max-w-full lg:hidden">
+                                {user.fullName.split(" ")[0]}
+                            </div>
+                        </button>
+                    );
+                })}
                 {filteredUsers.length === 0 && (
                     <div className="text-center text-zinc-500 py-4 text-xs sm:text-sm">
                         No online users

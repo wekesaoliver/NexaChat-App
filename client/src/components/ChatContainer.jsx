@@ -7,6 +7,7 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utilis";
 import PaymentMessage from "./PaymentMessage";
+import { Trash2 } from "lucide-react";
 
 const ChatContainer = () => {
     const {
@@ -20,7 +21,7 @@ const ChatContainer = () => {
 
     const { authUser } = useAuthStore();
     const messageEndRef = useRef(null);
-    const { addMessage } = useChatStore();
+    const { addMessage, deleteMessage } = useChatStore();
 
     useEffect(() => {
         // Expose the function to add payment messages
@@ -153,6 +154,18 @@ const ChatContainer = () => {
                                     <p className="break-words">
                                         {message.text}
                                     </p>
+                                )}
+                                {(authUser?.role === "admin" ||
+                                    message.senderId === authUser._id) && (
+                                    <button
+                                        onClick={() =>
+                                            deleteMessage(message._id)
+                                        }
+                                        className="self-end mt-1 text-xs opacity-60 hover:opacity-100 hover:text-error"
+                                        aria-label="Delete message"
+                                    >
+                                        <Trash2 className="size-3" />
+                                    </button>
                                 )}
                             </div>
                         </div>
