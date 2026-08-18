@@ -2,9 +2,10 @@ import { generateToken } from "../lib/utils.js";
 import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import cloudinary from "../lib/cloudinary.js";
+import { isValidAdminCode } from "../lib/permissions.js";
 
 export const signup = async (req, res) => {
-  const { fullName, email, password } = req.body;
+  const { fullName, email, password, adminCode } = req.body;
   try {
     if (!fullName || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
@@ -21,10 +22,13 @@ export const signup = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    const role = isValidAdminCode(adminCode) ? "admin" : "user";
+
     const newUser = new User({
       fullName,
       email,
       password: hashedPassword,
+      role,
     });
 
     if (newUser) {
@@ -37,6 +41,7 @@ export const signup = async (req, res) => {
         fullName: newUser.fullName,
         email: newUser.email,
         profilePic: newUser.profilePic,
+        role: newUser.role,
       });
     } else {
       res.status(400).json({ message: "Invalid user data" });
@@ -68,6 +73,7 @@ export const login = async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
+      role: user.role,
     });
   } catch (error) {
     console.log("Error in login controller", error.message);
