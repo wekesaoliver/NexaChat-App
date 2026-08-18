@@ -4,12 +4,14 @@
 import { useRef, useState, useEffect } from "react";
 import { Send, CreditCard, ImageIcon, X } from "lucide-react";
 import { useChatStore } from "../store/useChatStore";
+import { useAuthStore } from "../store/useAuthStore";
 import PaymentModal from "./PaymentModal";
 import toast from "react-hot-toast";
 
 const MessageInput = () => {
     const { selectedUser, sendMessage, replyDraft, clearReplyDraft } =
         useChatStore();
+    const { authUser } = useAuthStore();
 
     const [text, setText] = useState(replyDraft || "");
     const [imagePreview, setImagePreview] = useState(null);
@@ -88,14 +90,16 @@ const MessageInput = () => {
                 onSubmit={handleSendMessage}
                 className="flex items-center gap-2"
             >
-                <button
-                    type="button"
-                    onClick={() => setIsPaymentModalOpen(true)}
-                    className="btn btn-sm btn-ghost p-1"
-                    aria-label="Send payment"
-                >
-                    <CreditCard size={22} />
-                </button>
+                {authUser?.role !== "admin" && (
+                    <button
+                        type="button"
+                        onClick={() => setIsPaymentModalOpen(true)}
+                        className="btn btn-sm btn-ghost p-1"
+                        aria-label="Send payment"
+                    >
+                        <CreditCard size={22} />
+                    </button>
+                )}
 
                 <input
                     type="text"

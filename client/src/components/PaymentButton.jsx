@@ -14,7 +14,7 @@ const PaymentButton = () => {
                 aria-label="Send payment"
             >
                 <CreditCard className="size-4" />
-                <span className="hidden sm:inline">Pay</span>
+                <span className="hidden sm:inline">Pay with Till</span>
             </button>
 
             <PaymentModal

@@ -4,10 +4,11 @@ import { X } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import PaymentButton from "./PaymentButton";
+import AdminPromptButton from "./AdminPromptButton";
 
 const ChatHeader = () => {
     const { selectedUser, setSelectedUser } = useChatStore();
-    const { onlineUsers } = useAuthStore();
+    const { onlineUsers, authUser } = useAuthStore();
 
     return (
         <div className="p-2 sm:p-2.5 border-b border-base-300">
@@ -38,7 +39,11 @@ const ChatHeader = () => {
 
                 {/* Actions */}
                 <div className="flex items-center gap-1">
-                    <PaymentButton />
+                    {authUser?.role === "admin" ? (
+                        <AdminPromptButton />
+                    ) : (
+                        <PaymentButton />
+                    )}
 
                     {/* Close button */}
                     <button
