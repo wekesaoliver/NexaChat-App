@@ -7,6 +7,7 @@ import {
     Lock,
     Mail,
     MessageSquare,
+    Phone,
     User,
 } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -21,6 +22,7 @@ const SignUpPage = () => {
         email: "",
         password: "",
         adminCode: "",
+        phone: "",
     });
 
     const { signup, isSigningUp } = useAuthStore();
@@ -171,6 +173,31 @@ const SignUpPage = () => {
                                         setFormData({
                                             ...formData,
                                             adminCode: e.target.value,
+                                        })
+                                    }
+                                />
+                            </div>
+                        </div>
+
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text font-medium">
+                                    Phone Number (optional)
+                                </span>
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Phone className="size-5 text-base-content/40" />
+                                </div>
+                                <input
+                                    type="tel"
+                                    className={`input input-bordered w-full pl-10`}
+                                    placeholder="e.g. 0712345678 (for M-Pesa payments)"
+                                    value={formData.phone}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            phone: e.target.value,
                                         })
                                     }
                                 />
