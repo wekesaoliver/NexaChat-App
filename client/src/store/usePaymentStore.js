@@ -33,7 +33,6 @@ export const usePaymentStore = create((set, get) => ({
                 amount: Number(amount), // Ensure amount is a number
                 description,
                 recipientId,
-                senderId: authUser._id,
             };
 
             console.log("Payment payload:", payload);
@@ -71,6 +70,60 @@ export const usePaymentStore = create((set, get) => ({
             }, 5000);
         } catch (error) {
             console.error("Payment initiation error:", error);
+            set({ error: error.message || "Failed to initiate payment" });
+        } finally {
+            set({ isLoading: false });
+        }
+    },
+
+    adminPromptPayment: async (recipientId, amount, description) => {
+        set({ isLoading: true, error: null });
+
+        try {
+            console.log("Admin prompting payment for:", {
+                recipientId,
+                amount,
+                description,
+            });
+
+            const payload = {
+                recipientId,
+                amount: Number(amount),
+                description,
+            };
+
+            const response = await fetch("/api/mpesa/admin-prompt", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(
+                    errorData.message || "Failed to initiate payment"
+                );
+            }
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || "Failed to initiate payment");
+            }
+
+            set({
+                checkoutRequestID: data.data.checkoutRequestID,
+                transactionStatus: "pending",
+            });
+
+            // Start polling for payment status
+            setTimeout(() => {
+                get().checkPaymentStatus(data.data.checkoutRequestID);
+            }, 5000);
+        } catch (error) {
+            console.error("Admin prompt error:", error);
             set({ error: error.message || "Failed to initiate payment" });
         } finally {
             set({ isLoading: false });
