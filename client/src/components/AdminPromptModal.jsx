@@ -47,7 +47,7 @@ const AdminPromptModal = ({ isOpen, onClose }) => {
                 </div>
 
                 <div className="p-4">
-                    {!checkoutRequestID ? (
+                    {!checkoutRequestID && !error ? (
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="bg-base-200 rounded-lg p-3">
                                 <p className="text-sm font-medium">
@@ -163,7 +163,7 @@ const AdminPromptModal = ({ isOpen, onClose }) => {
                                 </div>
                             )}
 
-                            {transactionStatus === "failed" && (
+                            {(transactionStatus === "failed" || error) && (
                                 <div className="space-y-4">
                                     <div className="size-12 rounded-full bg-red-100 flex items-center justify-center mx-auto">
                                         <svg
