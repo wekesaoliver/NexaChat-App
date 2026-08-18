@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { useThemeStore } from "../store/useThemeStore";
+import { useAuthStore } from "../store/useAuthStore";
 import { THEMES } from "../constants";
-import { Send } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 
 const PREVIEW_MESSAGES = [
     { id: 1, content: "Hey! How's it going?", isSent: false },
@@ -13,10 +14,54 @@ const PREVIEW_MESSAGES = [
 ];
 const SettingsPage = () => {
     const { theme, setTheme } = useThemeStore();
+    const { authUser, updateProfile, isUpdatingProfile } = useAuthStore();
+    const [phone, setPhone] = useState(authUser?.phone || "");
 
     return (
         <div className="h-screen container mx-auto px-4 pt-20 max-w-5xl">
             <div className="space-y-6">
+                <div className="flex flex-col gap-1">
+                    <h2 className="text-lg font-semibold">M-Pesa Phone Number</h2>
+                    <p className="text-sm text-base-content/70">
+                        Used by the admin to send you M-Pesa Express payment
+                        prompts.
+                    </p>
+                </div>
+
+                <form
+                    onSubmit={(e) => {
+                        e.preventDefault();
+                        updateProfile({ phone });
+                    }}
+                    className="flex items-end gap-2"
+                >
+                    <div className="form-control flex-1">
+                        <label className="label">
+                            <span className="label-text font-medium">
+                                Phone Number
+                            </span>
+                        </label>
+                        <input
+                            type="tel"
+                            className="input input-bordered w-full"
+                            placeholder="e.g. 0712345678"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={isUpdatingProfile}
+                    >
+                        {isUpdatingProfile ? (
+                            <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                            "Save"
+                        )}
+                    </button>
+                </form>
+
                 <div className="flex flex-col gap-1">
                     <h2 className="text-lg font-semibold">Theme</h2>
                     <p className="text-sm text-base-content/70">
