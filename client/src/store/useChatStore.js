@@ -71,4 +71,19 @@ export const useChatStore = create((set, get) => ({
 
     /* TODO */
     setSelectedUser: (selectedUser) => set({ selectedUser }),
+
+    replyDraft: "",
+    setReplyDraft: (text) => set({ replyDraft: text }),
+    clearReplyDraft: () => set({ replyDraft: "" }),
+
+    deleteMessage: async (messageId) => {
+        try {
+            await axiosInstance.delete(`/messages/${messageId}`);
+            set({
+                messages: get().messages.filter((m) => m._id !== messageId),
+            });
+        } catch (error) {
+            toast.error(error.response?.data?.error || "Failed to delete message");
+        }
+    },
 }));
