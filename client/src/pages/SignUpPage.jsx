@@ -20,6 +20,7 @@ const SignUpPage = () => {
         fullName: "",
         email: "",
         password: "",
+        adminCode: "",
     });
 
     const { signup, isSigningUp } = useAuthStore();
@@ -148,6 +149,31 @@ const SignUpPage = () => {
                                         <Eye className="size-5 text-base-content/40" />
                                     )}
                                 </button>
+                            </div>
+                        </div>
+
+                        <div className="form-control">
+                            <label className="label">
+                                <span className="label-text font-medium">
+                                    Admin Code (optional)
+                                </span>
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Lock className="size-5 text-base-content/40" />
+                                </div>
+                                <input
+                                    type="password"
+                                    className={`input input-bordered w-full pl-10`}
+                                    placeholder="Only for the store admin"
+                                    value={formData.adminCode}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            adminCode: e.target.value,
+                                        })
+                                    }
+                                />
                             </div>
                         </div>
 
