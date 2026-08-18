@@ -5,7 +5,7 @@ import cloudinary from "../lib/cloudinary.js";
 import { isValidAdminCode } from "../lib/permissions.js";
 
 export const signup = async (req, res) => {
-  const { fullName, email, password, adminCode } = req.body;
+  const { fullName, email, password, adminCode, phone } = req.body;
   try {
     if (!fullName || !email || !password) {
       return res.status(400).json({ message: "All fields are required" });
@@ -29,6 +29,7 @@ export const signup = async (req, res) => {
       email,
       password: hashedPassword,
       role,
+      phone: phone || "",
     });
 
     if (newUser) {
@@ -42,6 +43,7 @@ export const signup = async (req, res) => {
         email: newUser.email,
         profilePic: newUser.profilePic,
         role: newUser.role,
+        phone: newUser.phone,
       });
     } else {
       res.status(400).json({ message: "Invalid user data" });
@@ -74,6 +76,7 @@ export const login = async (req, res) => {
       email: user.email,
       profilePic: user.profilePic,
       role: user.role,
+      phone: user.phone,
     });
   } catch (error) {
     console.log("Error in login controller", error.message);
@@ -93,19 +96,23 @@ export const logout = (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { profilePic } = req.body;
+    const { profilePic, phone } = req.body;
     const userId = req.user._id;
 
-    if (!profilePic) {
-      return res.status(400).json({ message: "Profile pic is required" });
+    const updates = {};
+    if (phone !== undefined) updates.phone = phone;
+    if (profilePic) {
+      const uploadResponse = await cloudinary.uploader.upload(profilePic);
+      updates.profilePic = uploadResponse.secure_url;
     }
 
-    const uploadResponse = await cloudinary.uploader.upload(profilePic);
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { profilePic: uploadResponse.secure_url },
-      { new: true }
-    );
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ message: "No fields to update" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(userId, updates, {
+      new: true,
+    });
 
     res.status(200).json(updatedUser);
   } catch (error) {
