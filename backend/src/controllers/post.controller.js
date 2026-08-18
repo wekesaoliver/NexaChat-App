@@ -28,11 +28,19 @@ export const createPost = async (req, res) => {
             imageUrls = uploads.map((u) => u.secure_url);
         }
 
+        let priceValue;
+        if (price !== undefined && price !== null && price !== "") {
+            priceValue = Number(price);
+            if (!Number.isFinite(priceValue) || priceValue < 0) {
+                return res.status(400).json({ error: "Price must be a non-negative number" });
+            }
+        }
+
         const newPost = new Post({
             authorId: req.user._id,
             title: title.trim(),
             text: text?.trim() || "",
-            price: price ? Number(price) : undefined,
+            price: priceValue,
             storeLink: storeLink?.trim() || "",
             images: imageUrls,
         });
@@ -64,7 +72,17 @@ export const updatePost = async (req, res) => {
 
         post.title = title?.trim() || post.title;
         post.text = text?.trim() ?? post.text;
-        post.price = price !== undefined ? Number(price) : post.price;
+        if (price !== undefined) {
+            if (price === null || price === "") {
+                post.price = undefined;
+            } else {
+                const priceValue = Number(price);
+                if (!Number.isFinite(priceValue) || priceValue < 0) {
+                    return res.status(400).json({ error: "Price must be a non-negative number" });
+                }
+                post.price = priceValue;
+            }
+        }
         post.storeLink = storeLink?.trim() ?? post.storeLink;
         post.images = imageUrls;
 
