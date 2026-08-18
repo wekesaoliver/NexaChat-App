@@ -10,6 +10,7 @@ import cors from "cors";
 import { app, server } from "./lib/socket.js";
 import path from "path";
 import mpesaTestRoutes from "./routes/mpesa-test.js";
+import postRoutes from "./routes/post.route.js";
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 app.use("/api/mpesa", mpesaRoutes);
 app.use("/api/payment-requests", paymentRequests);
+app.use("/api/posts", postRoutes);
 app.use("/api/mpesa-test", mpesaTestRoutes);
 
 app.use((err, req, res, next) => {
