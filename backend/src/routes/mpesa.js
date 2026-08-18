@@ -6,6 +6,8 @@ import Transaction from "../models/Transaction.js";
 import Message from "../models/message.model.js";
 import PaymentRequest from "../models/PaymentRequest.js";
 import { io, getReceiverSocketId } from "../lib/socket.js";
+import User from "../models/user.model.js";
+import { protectRoute, requireAdmin } from "../middleware/auth.middleware.js";
 
 router.post("/callback", async (req, res) => {
     try {
@@ -127,21 +129,15 @@ router.get("/test", (req, res) => {
 });
 
 // initiate route
-router.post("/initiate", async (req, res, next) => {
+router.post("/initiate", protectRoute, async (req, res, next) => {
     try {
         console.log("Received payment initiation request:", req.body);
 
-        const { phoneNumber, amount, description, recipientId, senderId } =
-            req.body;
+        const { phoneNumber, amount, description, recipientId } = req.body;
+        const senderId = req.user._id;
 
         // Validate required fields
-        if (
-            !phoneNumber ||
-            !amount ||
-            !description ||
-            !recipientId ||
-            !senderId
-        ) {
+        if (!phoneNumber || !amount || !description || !recipientId) {
             return res.status(400).json({
                 success: false,
                 message: "All fields are required",
@@ -150,7 +146,6 @@ router.post("/initiate", async (req, res, next) => {
                     amount,
                     description,
                     recipientId,
-                    senderId,
                 })
                     .filter(([_, value]) => !value)
                     .map(([key]) => key),
@@ -240,6 +235,102 @@ router.post("/initiate", async (req, res, next) => {
         next(error);
     }
 });
+
+// admin-prompt route (admin only) — sends an STK push to a user's phone
+router.post(
+    "/admin-prompt",
+    protectRoute,
+    requireAdmin,
+    async (req, res, next) => {
+        try {
+            console.log("Received admin payment prompt:", req.body);
+
+            const { recipientId, amount, description } = req.body;
+
+            // Validate required fields
+            if (!recipientId || !amount || !description) {
+                return res.status(400).json({
+                    success: false,
+                    message: "All fields are required",
+                    missing: Object.entries({
+                        recipientId,
+                        amount,
+                        description,
+                    })
+                        .filter(([_, value]) => !value)
+                        .map(([key]) => key),
+                });
+            }
+
+            // Look up the recipient and read their phone from the DB
+            const recipient = await User.findById(recipientId);
+            if (!recipient) {
+                return res
+                    .status(404)
+                    .json({ success: false, message: "User not found" });
+            }
+            if (!recipient.phone) {
+                return res.status(400).json({
+                    success: false,
+                    message: "User has no phone number on file",
+                });
+            }
+
+            // Initiate STK Push to the recipient's phone
+            const response = await initiateSTKPush(
+                recipient.phone,
+                amount,
+                description
+            );
+            console.log("STK Push response:", response);
+
+            // Store transaction in database (payer = recipient, receiver = admin)
+            try {
+                const transaction = await Transaction.create({
+                    checkoutRequestID: response.CheckoutRequestID,
+                    merchantRequestID: response.MerchantRequestID,
+                    amount,
+                    phoneNumber: recipient.phone,
+                    senderId: recipientId,
+                    recipientId: req.user._id,
+                    description,
+                    status: "pending",
+                });
+
+                // Notify the admin via socket
+                const adminSocketId = getReceiverSocketId(req.user._id);
+                if (adminSocketId) {
+                    io.to(adminSocketId).emit("payment_initiated", {
+                        transactionId: transaction._id,
+                        senderId: recipientId,
+                        amount,
+                        description,
+                    });
+                }
+            } catch (dbError) {
+                console.error("Database error (continuing anyway):", dbError);
+            }
+
+            return res.json({
+                success: true,
+                message: "Payment initiated successfully",
+                data: {
+                    checkoutRequestID: response.CheckoutRequestID,
+                    merchantRequestID: response.MerchantRequestID,
+                    responseCode: response.ResponseCode,
+                    responseDescription: response.ResponseDescription,
+                    customerMessage: response.CustomerMessage,
+                },
+            });
+        } catch (error) {
+            console.error("Error in admin payment prompt:", error);
+            if (error.response && error.response.data) {
+                console.error("M-Pesa API error response:", error.response.data);
+            }
+            next(error);
+        }
+    }
+);
 
 router.get("/diagnose", async (req, res) => {
     try {
