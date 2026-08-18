@@ -12,14 +12,19 @@
 - 💳 **M-Pesa Integration** – Initiate and track mobile payments directly within the app.
 - 🧾 **Payment Request System** – Easily create and manage payment requests.
 - 🌐 **CORS-enabled API** – Works with frontend clients like React or Vue.
+- 🛡️ **Role-Based Access** – Admin account created via a signup code; admins manage posts and messages, users get community access.
 
 ### Frontend
 - 🔐 **User Authentication** – Sign up and log in with protected routes.
 - 🙋 **Profile & Settings Pages** – Manage user profiles and preferences.
-- 📶 **Online Users Tracker** – See who’s online in real time.
+- 📶 **Online Users Tracker** – See who's online in real time.
 - 🎨 **Theming Support** – Light/dark mode and customizable themes.
 - 🚀 **React + Vite + Tailwind CSS** – Super-fast builds and responsive UI.
 - 🔔 **Notifications** – Integrated toast messages using `react-hot-toast`.
+- 📢 **Admin Broadcast Posts** – Admins publish posts with titles, images, prices, and store links; new posts appear on every user's feed in real time.
+- ❤️ **Post Likes** – Like/unlike posts and watch the count update live across all feeds.
+- 👥 **Admin-Only DMs** – Users can only message the admin; the admin can chat with anyone.
+- 🛍️ **Visit Store** – One-click link to the ecommerce store from the navbar and from each post.
 
 ---
 
@@ -66,6 +71,8 @@ npm install
 # Create .env file
 cp .env.example .env
 # Fill in MongoDB URI, JWT secret, Cloudinary & M-Pesa credentials
+# Plus STORE_URL (your ecommerce store link for the "Visit Store" button)
+# and ADMIN_SIGNUP_CODE (optional secret code that creates an admin account)
 
 # Start the server
 npm run dev
