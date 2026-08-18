@@ -25,6 +25,7 @@ const PostsPage = () => {
         <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
             {authUser?.role === "admin" && (
                 <PostComposer
+                    key={editingPost?._id ?? "new"}
                     editingPost={editingPost}
                     onCancelEdit={() => setEditingPost(null)}
                 />
