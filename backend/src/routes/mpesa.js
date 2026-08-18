@@ -1,7 +1,7 @@
 // routes/mpesa.js
 import express from "express";
 const router = express.Router();
-import { initiateSTKPush, checkTransactionStatus } from "../utils/mpesa.js";
+import { initiateSTKPush, checkTransactionStatus, validateAdminPromptInput } from "../utils/mpesa.js";
 import Transaction from "../models/Transaction.js";
 import Message from "../models/message.model.js";
 import PaymentRequest from "../models/PaymentRequest.js";
@@ -203,6 +203,7 @@ router.post("/initiate", protectRoute, async (req, res, next) => {
                 io.to(recipientSocketId).emit("payment_initiated", {
                     transactionId: transaction._id,
                     senderId,
+                    senderName: req.user.fullName,
                     amount,
                     description,
                 });
@@ -248,17 +249,15 @@ router.post(
             const { recipientId, amount, description } = req.body;
 
             // Validate required fields
-            if (!recipientId || !amount || !description) {
+            const validationError = validateAdminPromptInput({
+                recipientId,
+                amount,
+                description,
+            });
+            if (validationError) {
                 return res.status(400).json({
                     success: false,
-                    message: "All fields are required",
-                    missing: Object.entries({
-                        recipientId,
-                        amount,
-                        description,
-                    })
-                        .filter(([_, value]) => !value)
-                        .map(([key]) => key),
+                    message: validationError,
                 });
             }
 
@@ -303,6 +302,7 @@ router.post(
                     io.to(adminSocketId).emit("payment_initiated", {
                         transactionId: transaction._id,
                         senderId: recipientId,
+                        senderName: recipient.fullName,
                         amount,
                         description,
                     });

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSTKPushRequest } from "./mpesa.js";
+import { buildSTKPushRequest, validateAdminPromptInput } from "./mpesa.js";
 
 const base = {
     shortcode: "5874806",
@@ -49,5 +49,56 @@ test("buildSTKPushRequest: Till requires tillNumber", () => {
                 transactionType: "CustomerBuyGoodsOnline",
             }),
         /MPESA_TILL_NUMBER is required/
+    );
+});
+
+test("validateAdminPromptInput: rejects missing recipientId", () => {
+    assert.ok(
+        validateAdminPromptInput({ amount: 100, description: "test" }),
+        "should return an error message"
+    );
+});
+
+test("validateAdminPromptInput: rejects missing amount", () => {
+    assert.ok(
+        validateAdminPromptInput({ recipientId: "abc", description: "test" }),
+        "should return an error message"
+    );
+});
+
+test("validateAdminPromptInput: rejects invalid or non-positive amount", () => {
+    assert.ok(
+        validateAdminPromptInput({
+            recipientId: "abc",
+            amount: "not-a-number",
+            description: "test",
+        }),
+        "should reject non-numeric amount"
+    );
+    assert.ok(
+        validateAdminPromptInput({
+            recipientId: "abc",
+            amount: 0,
+            description: "test",
+        }),
+        "should reject zero amount"
+    );
+});
+
+test("validateAdminPromptInput: rejects missing description", () => {
+    assert.ok(
+        validateAdminPromptInput({ recipientId: "abc", amount: 100 }),
+        "should return an error message"
+    );
+});
+
+test("validateAdminPromptInput: returns null for valid input", () => {
+    assert.equal(
+        validateAdminPromptInput({
+            recipientId: "abc",
+            amount: 100,
+            description: "test",
+        }),
+        null
     );
 });

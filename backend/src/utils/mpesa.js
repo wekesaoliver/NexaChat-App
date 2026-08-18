@@ -109,6 +109,27 @@ const VALID_TRANSACTION_TYPES = [
 ];
 
 /**
+ * Validate admin-prompt request body fields.
+ * Returns an error message string, or null if valid.
+ */
+export function validateAdminPromptInput({ recipientId, amount, description }) {
+    if (!recipientId) {
+        return "Recipient is required";
+    }
+    if (amount === undefined || amount === null || amount === "") {
+        return "Amount is required";
+    }
+    const numericAmount = Number(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+        return "Amount must be a positive number";
+    }
+    if (!description) {
+        return "Description is required";
+    }
+    return null;
+}
+
+/**
  * Build the STK Push request payload.
  *
  * PayBill (CustomerPayBillOnline): BusinessShortCode = PartyB = shortcode
