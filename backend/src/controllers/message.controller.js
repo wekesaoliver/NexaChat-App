@@ -92,6 +92,14 @@ export const deleteMessage = async (req, res) => {
             return res.status(403).json({ error: "Forbidden" });
         }
         await Message.findByIdAndDelete(id);
+
+        // propagate the deletion to both participants in real time
+        const senderSocketId = getReceiverSocketId(message.senderId);
+        const receiverSocketId = getReceiverSocketId(message.receiverId);
+        const payload = { messageId: message._id };
+        if (senderSocketId) io.to(senderSocketId).emit("messageDeleted", payload);
+        if (receiverSocketId) io.to(receiverSocketId).emit("messageDeleted", payload);
+
         res.status(200).json({ message: "Message deleted" });
     } catch (error) {
         console.log("Error in deleteMessage controller", error.message);
